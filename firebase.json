@@ -1,0 +1,31 @@
+{
+  "functions": {
+    "source": "functions",
+    "ignore": [
+      "node_modules",
+      ".git",
+      "firebase-debug.log",
+      "firebase-debug.*.log"
+    ]
+  },
+  "emulators": {
+    "auth": {
+      "port": 9150
+    },
+    "functions": {
+      "port": 5001
+    },
+    "firestore": {
+      "port": 8080
+    },
+    "database": {
+      "port": 4600
+    },
+    "hosting": {
+      "port": 9000
+    }
+  },
+  "database": {
+    "rules": "database.rules.json"
+  }
+}

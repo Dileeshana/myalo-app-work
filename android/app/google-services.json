@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "701239522077",
+    "project_id": "myalo-138c6",
+    "storage_bucket": "myalo-138c6.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:701239522077:android:9ccc3a2cb00eb8413be7f4",
+        "android_client_info": {
+          "package_name": "com.dileej.myalo_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "701239522077-glrvmlep32k257u9lf13bllp0eprj9d2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAeXVnSIS73Wizm1GR81EteDCFW31qbz9s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "701239522077-glrvmlep32k257u9lf13bllp0eprj9d2.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
