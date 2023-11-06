@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'login.dart';
+import 'doctor.dart';
 // import 'model.dart';
 
 class Register extends StatefulWidget {
@@ -325,8 +326,20 @@ class _RegisterState extends State<Register> {
     FirebaseFirestore firebaseFirestore = FirebaseFirestore.instance;
     var user = _auth.currentUser;
     CollectionReference ref = FirebaseFirestore.instance.collection('users');
-    ref.doc(user!.uid).set({'email': emailController.text, 'role': role});
-    Navigator.pushReplacement(
-        context, MaterialPageRoute(builder: (context) => LoginPage()));
+
+    Map<String, dynamic> userData = {
+      'email': emailController.text,
+      'role': role
+    };
+
+    ref.doc(user!.uid).set(userData);
+
+    if (role == "Doctor") {
+      Navigator.pushReplacement(
+          context, MaterialPageRoute(builder: (context) => Doctor(userData)));
+    } else {
+      Navigator.pushReplacement(
+          context, MaterialPageRoute(builder: (context) => LoginPage()));
+    }
   }
 }

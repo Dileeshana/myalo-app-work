@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:myalo_app/login/chatbot.dart';
 
 class TreatOneLanding extends StatelessWidget {
   @override
@@ -10,9 +11,7 @@ class TreatOneLanding extends StatelessWidget {
         title: Center(
           child: Text(
             "Schizophrenia Activity",
-            style: TextStyle(
-              color: Colors.black
-            ),
+            style: TextStyle(color: Colors.black),
           ),
         ),
       ),
@@ -25,10 +24,8 @@ class TreatOneLanding extends StatelessWidget {
               Container(
                 height: 300,
                 width: 300,
-                child: Image.asset(
-                  'lib/images/meditating1.jpg'
-                  ),
-                ),
+                child: Image.asset('lib/images/meditating1.jpg'),
+              ),
               Container(
                 width: 200,
                 height: 50,
@@ -39,7 +36,12 @@ class TreatOneLanding extends StatelessWidget {
                     primary: Colors.blue.shade600,
                     onPrimary: Color.fromARGB(230, 255, 255, 255),
                   ),
-                  onPressed: () {  },
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => ChatbotScreen()),
+                    );
+                  },
                 ),
               ),
             ],

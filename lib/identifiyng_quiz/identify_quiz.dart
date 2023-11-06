@@ -1,10 +1,10 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:myalo_app/identifiyng_quiz/identified_result.dart';
 import 'package:firebase_database/firebase_database.dart';
-
+import 'package:myalo_app/vr/vr.dart';
 import 'quiz_model.dart';
+import 'dart:math';
 
 class IdentifyQuiz extends StatefulWidget {
   @override
@@ -16,46 +16,97 @@ class _IdentifyQuizState extends State<IdentifyQuiz> {
   int currentQuestionIndex = 0;
   Answer? selectedAnswer;
   Map<int, Answer> userAnswers = {}; // to keep track of answers
+  final Map<int, int> answerScores = {};
 
   @override
   void initState() {
     super.initState();
     fetchQuestionsFromFirebase().then((questions) {
       setState(() {
-          questionList = questions;
+        questionList = questions;
       });
     });
   }
 
   Future<List<Question>> fetchQuestionsFromFirebase() async {
-  final databaseReference = FirebaseDatabase.instance.reference();
-  List<Question> questions = [];
+    final databaseReference = FirebaseDatabase.instance.reference();
+    List<Question> questions = [];
 
-  await databaseReference.child('questions').once().then((DataSnapshot snapshot) {
-    Map<dynamic, dynamic>? questionData = snapshot.value as Map<dynamic, dynamic>?; // cast here
-    // Object? questionData = snapshot.value;
-    questionData!.forEach((questionId, questionDetails) {
-      List<Answer> answerList = [];
-      Map<dynamic, dynamic> answers = questionDetails['answers']as Map<dynamic, dynamic>;
+    await databaseReference
+        .child('questions')
+        .once()
+        .then((DatabaseEvent event) {
+      DataSnapshot snapshot = event.snapshot;
+      List<Object?> myList = snapshot.value as List<Object?>;
 
-      answers.forEach((answerId, answerText) {
-        answerList.add(Answer(answerId: int.parse(answerId), answerText: answerText));
+      // Create a map to keep track of questions for each MID
+      Map<int, List<Question>> midQuestionsMap = {};
+
+      for (Object? element in myList) {
+        if (element is Map<Object?, Object?>) {
+          final Map<Object?, Object?> mapElement = element;
+          String text = mapElement['text'].toString();
+          String illness = mapElement['illness'].toString();
+          int mid = int.parse(mapElement['MID'].toString());
+          final List<Object?> answersList =
+              mapElement['answers'] as List<Object?>;
+
+          List<Answer> answerList = [];
+          answersList.forEach((answerItem) {
+            if (answerItem != null) {
+              answerList.add(Answer(
+                answerId: mid, // Assign an appropriate answer ID
+                answerText: answerItem.toString(),
+              ));
+            }
+          });
+
+          Question question = Question(
+            questionText: text,
+            illness: illness,
+            MID: mid,
+            answerList: answerList,
+          );
+
+          // Add the question to the MID-specific list
+          midQuestionsMap[mid] ??= [];
+          midQuestionsMap[mid]!.add(question);
+        }
+      }
+
+      // Shuffle and take exactly 3 questions for each MID
+      midQuestionsMap.forEach((mid, midQuestions) {
+        if (midQuestions.length >= 3) {
+          midQuestions.shuffle();
+          questions.addAll(midQuestions.take(3));
+        } else {
+          questions.addAll(midQuestions);
+        }
       });
 
-      questions.add(
-        Question(
-          questionText: questionDetails['text'],
-          illness: questionDetails['illness'],
-          MID: questionDetails['MID'],
-          answerList: answerList,
-        ),
-      );
+      // Randomly select one additional question from MIDs 1, 2, or 3
+      List<int> midsToChooseFrom = [1, 2, 3];
+      midsToChooseFrom.shuffle();
+      int additionalMid = midsToChooseFrom.first;
+      questions.add(midQuestionsMap[additionalMid]!.first);
+
+      // Shuffle all the questions again and limit the total number to 10
+      questions.shuffle();
+      questions = questions.take(10).toList();
     });
-  } as FutureOr Function(DatabaseEvent value));
 
-  return questions;
-}
+    Question question = Question(
+      questionText: "You will be played a 360 VR now.",
+      illness: "",
+      MID: 0,
+      answerList: [],
+    );
+    questions.add(question);
+    print(questions.length);
+    return questions;
+  }
 
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -86,24 +137,22 @@ class _IdentifyQuizState extends State<IdentifyQuiz> {
     );
   }
 
-
   _questionWidget() {
     if (questionList.isEmpty) {
       return const CircularProgressIndicator(); // Show a loading spinner if questions are not loaded yet
     }
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        
         const SizedBox(height: 15),
         Container(
           alignment: Alignment.center,
           width: double.infinity,
           padding: const EdgeInsets.all(15),
           decoration: BoxDecoration(
-            color: Color.fromARGB(255, 30, 168, 236),
+            color: const Color.fromARGB(255, 142, 196, 223),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Text(
@@ -118,33 +167,21 @@ class _IdentifyQuizState extends State<IdentifyQuiz> {
       ],
     );
   }
-  
 
   _answerList() {
-  if (questionList.isEmpty || currentQuestionIndex >= questionList.length) {
-    return SizedBox.shrink();  // Return an empty widget if the questionList is not loaded or if the index is out of range
+    if (questionList.isEmpty || currentQuestionIndex >= questionList.length) {
+      return const SizedBox
+          .shrink(); // Return an empty widget if the questionList is not loaded or if the index is out of range
+    }
+    return Column(
+      children: questionList[currentQuestionIndex]
+          .answerList
+          .map(
+            (e) => _answerButton(e),
+          )
+          .toList(),
+    );
   }
-  return Column(
-    children: questionList[currentQuestionIndex]
-        .answerList
-        .map(
-          (e) => _answerButton(e),
-        )
-        .toList(),
-  );
-}
-
-
-  // _answerList() {
-  //   return Column(
-  //     children: questionList[currentQuestionIndex]
-  //         .answerList
-  //         .map(
-  //           (e) => _answerButton(e),
-  //         )
-  //         .toList(),
-  //   );
-  // }
 
   Widget _answerButton(Answer answer) {
     bool isSelected = answer == selectedAnswer;
@@ -180,22 +217,59 @@ class _IdentifyQuizState extends State<IdentifyQuiz> {
       width: MediaQuery.of(context).size.width * 0.5,
       height: 40,
       child: ElevatedButton(
-          child: Text(islastQuestion ? "Show Results" : "Next"),
+          child: Text(islastQuestion ? "Play 360 VR Clip" : "Next"),
           style: ElevatedButton.styleFrom(
             shape: const StadiumBorder(),
             primary: Colors.green.shade400,
             onPrimary: Colors.black,
           ),
           onPressed: () {
-            if (selectedAnswer != null) {
-              userAnswers[currentQuestionIndex] = selectedAnswer!;
+            if (selectedAnswer != null || islastQuestion) {
+              if (!islastQuestion) {
+                userAnswers[currentQuestionIndex] = selectedAnswer!;
+                print(selectedAnswer?.answerId);
 
+                if (selectedAnswer!.answerId != null) {
+                  if (selectedAnswer!.answerText == "Yes") {
+                    answerScores.update(
+                      selectedAnswer!.answerId!,
+                      (value) => value + 2,
+                      ifAbsent: () => 2,
+                    );
+                  } else if (selectedAnswer!.answerText == "Maybe") {
+                    answerScores.update(
+                      selectedAnswer!.answerId!,
+                      (value) => value + 1,
+                      ifAbsent: () => 1,
+                    );
+                  }
+                  // No is 0, so no need to update for "No" answers.
+                }
+              }
               if (islastQuestion) {
-                //redirect to result sheet with answers
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => ResultScreen(userAnswers)));
+                int highestScoringAnswerId = 0;
+                int highestScore = 0;
+                String sickness = "severity-sa";
+
+                answerScores.forEach((answerId, score) {
+                  if (score > highestScore) {
+                    highestScoringAnswerId = answerId;
+                    highestScore = score;
+                  }
+                });
+
+                if (highestScoringAnswerId == 2) {
+                  sickness = "severity-sch";
+                } else if (highestScoringAnswerId == 3) {
+                  sickness = "severity-ac";
+                }
+                // print(highestScoringAnswerId);
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (context) => VR(sickness)));
+                // Navigator.push(
+                //     context,
+                //     MaterialPageRoute(
+                //         builder: (context) => ResultScreen(sickness)));
               } else {
                 //next question
                 setState(() {
@@ -209,5 +283,7 @@ class _IdentifyQuizState extends State<IdentifyQuiz> {
           }),
     );
   }
-
 }
+//1:social - severity-sa
+//2:schz  - severity-sch
+//3:acro -severity -ac

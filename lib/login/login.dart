@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'Patient.dart';
 import 'Doctor.dart';
 import 'register.dart';
+import 'package:firebase_database/firebase_database.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -15,6 +16,7 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   bool _isObscure3 = true;
   bool visible = false;
+  String errorMessage = '';
   final _formkey = GlobalKey<FormState>();
   final TextEditingController emailController = new TextEditingController();
   final TextEditingController passwordController = new TextEditingController();
@@ -60,6 +62,9 @@ class _LoginPageState extends State<LoginPage> {
                             fillColor: Colors.white,
                             hintText: 'Email',
                             enabled: true,
+                            errorStyle: TextStyle(
+                                color:
+                                    const Color.fromARGB(255, 255, 255, 255)),
                             contentPadding: const EdgeInsets.only(
                                 left: 14.0, bottom: 8.0, top: 8.0),
                             focusedBorder: OutlineInputBorder(
@@ -104,6 +109,9 @@ class _LoginPageState extends State<LoginPage> {
                                     _isObscure3 = !_isObscure3;
                                   });
                                 }),
+                            errorStyle: TextStyle(
+                                color:
+                                    const Color.fromARGB(255, 255, 255, 255)),
                             filled: true,
                             fillColor: Colors.white,
                             hintText: 'Password',
@@ -145,9 +153,6 @@ class _LoginPageState extends State<LoginPage> {
                           elevation: 5.0,
                           height: 40,
                           onPressed: () {
-                            setState(() {
-                              visible = true;
-                            });
                             signIn(
                                 emailController.text, passwordController.text);
                           },
@@ -161,6 +166,13 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                         SizedBox(
                           height: 10,
+                        ),
+                        Text(
+                          errorMessage,
+                          style: TextStyle(
+                            color: Color.fromARGB(255, 247, 246,
+                                248), // You can choose the color you prefer
+                          ),
                         ),
                         Visibility(
                             maintainSize: true,
@@ -257,38 +269,68 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  void route() {
+  Map<Object?, Object?> getUserData(List<Object?> data, String? userId) {
+    for (var item in data) {
+      if (item is Map<Object?, Object?> && item['userId'] == userId) {
+        return item;
+      }
+    }
+    return {}; // Return an empty map if no matching item is found
+  }
+
+  Future<void> route() async {
     User? user = FirebaseAuth.instance.currentUser;
-    // ignore: unused_local_variable
-    var kk = FirebaseFirestore.instance
-        .collection('users')
-        .doc(user!.uid)
-        .get()
-        .then((DocumentSnapshot documentSnapshot) {
-      if (documentSnapshot.exists) {
-        if (documentSnapshot.get('role') == "Doctor") {
+
+    final databaseReference = FirebaseDatabase.instance.reference();
+    final userRef = databaseReference.child('users');
+
+    await userRef
+        .orderByChild('userId')
+        .equalTo(user?.uid)
+        .once()
+        .then((DatabaseEvent event) {
+      DataSnapshot snapshot = event.snapshot;
+
+      if (snapshot.value != null) {
+        setState(() {
+          visible = false;
+        });
+        //    List<Object?> data = snapshot.value as List<Object?>;
+        //add method here to go through data list and get item with userId=user?.uid
+        // Map<Object?, Object?> userData = data[0] as Map<Object?, Object?>;
+
+        List<Object?> data = snapshot.value as List<Object?>;
+        Map<Object?, Object?> userData = getUserData(data, user?.uid);
+        print('Testing $data');
+        print('Testing $userData');
+        if (userData['userType'] == "Patient") {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) => Doctor(),
+              builder: (context) => Patient(userData),
             ),
           );
-        } else {
+        } else if (userData['userType'] == "Doctor") {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) => Patient(),
+              builder: (context) => Doctor(userData),
             ),
           );
         }
+        print(userData['userType']);
       } else {
-        print('Document does not exist on the database');
+        // User not found
+        print('User not found');
       }
     });
   }
 
   void signIn(String email, String password) async {
     if (_formkey.currentState!.validate()) {
+      setState(() {
+        visible = true;
+      });
       try {
         UserCredential userCredential =
             await FirebaseAuth.instance.signInWithEmailAndPassword(
@@ -297,12 +339,23 @@ class _LoginPageState extends State<LoginPage> {
         );
         route();
       } on FirebaseAuthException catch (e) {
-        if (e.code == 'user-not-found') {
-          print('No user found for that email.');
-        } else if (e.code == 'wrong-password') {
-          print('Wrong password provided for that user.');
-        }
+        setState(() {
+          visible = false;
+          errorMessage = getErrorMessage(e.code); // Set the error message
+        });
       }
+    }
+  }
+
+  // Function to map error codes to error messages
+  String getErrorMessage(String errorCode) {
+    switch (errorCode) {
+      case 'user-not-found':
+        return 'No user found for that email.';
+      case 'wrong-password':
+        return 'Wrong password provided for that user.';
+      default:
+        return 'An error occurred: $errorCode';
     }
   }
 }

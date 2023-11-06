@@ -1,17 +1,76 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:myalo_app/models/severity_quiz_model.dart';
-
+import 'package:firebase_database/firebase_database.dart';
 import 'severity_result.dart';
 
 class SeverityQuiz extends StatefulWidget {
+  final String severity; // Define a field to store the severity
+
+  SeverityQuiz(this.severity); // Constructor to initialize the severity
+
   @override
   State<SeverityQuiz> createState() => _SeverityQuizState();
 }
 
 class _SeverityQuizState extends State<SeverityQuiz> {
-  List<Question> questionList = getQuestions();
+  String severity = "";
+  List<Question> questionList = [];
   int currentQuestionIndex = 0;
   Answer? selectedAnswer;
+  int userAnswers = 0; // to keep track of answers
+
+  @override
+  void initState() {
+    super.initState();
+    severity = widget.severity;
+    print(severity);
+    fetchQuestionsFromFirebase().then((questions) {
+      setState(() {
+        questionList = questions;
+      });
+    });
+  }
+
+  Future<List<Question>> fetchQuestionsFromFirebase() async {
+    final databaseReference = FirebaseDatabase.instance.reference();
+    List<Question> questions = [];
+
+    await databaseReference.child(severity).once().then((DatabaseEvent event) {
+      DataSnapshot snapshot = event.snapshot;
+
+      List<Object?> myList = snapshot.value as List<Object?>;
+
+      for (Object? element in myList) {
+        if (element is Map<Object?, Object?>) {
+          final Map<Object?, Object?> mapElement = element;
+
+          String question = mapElement['question'].toString();
+          String illness = mapElement['illness'].toString();
+
+          List<Object?> answersList = mapElement['answers'] as List<Object?>;
+          List<Answer> answerList = [];
+
+          for (Object? answerItem in answersList) {
+            if (answerItem is Map<Object?, Object?>) {
+              String response = answerItem['response'].toString();
+              int weight = int.parse(answerItem['weight'].toString());
+              answerList
+                  .add(Answer(answerWeight: weight, answerText: response));
+            }
+          }
+
+          questions.add(Question(
+            questionText: question,
+            illness: illness,
+            answerList: answerList,
+          ));
+        }
+      }
+    });
+
+    return questions;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,13 +87,6 @@ class _SeverityQuizState extends State<SeverityQuiz> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            // const Text(
-            //   "Identify Your Sickness",
-            //   style: TextStyle(
-            //     color: Colors.black87,
-            //     fontSize: 22,
-            //   ),
-            // ),
             _questionWidget(),
             _answerList(),
             _nextButton(),
@@ -45,16 +97,14 @@ class _SeverityQuizState extends State<SeverityQuiz> {
   }
 
   _questionWidget() {
+    if (questionList.isEmpty) {
+      return const CircularProgressIndicator();
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        // Text(                //this for show question number
-        //   "Question ${currentQuestionIndex+1}/{questionList.length.toString()}",
-        //   style: const TextStyle(
-        //     color: Colors.black,
-        //   ),
-        // ),
         const SizedBox(height: 15),
         Container(
           alignment: Alignment.center,
@@ -78,6 +128,10 @@ class _SeverityQuizState extends State<SeverityQuiz> {
   }
 
   _answerList() {
+    if (questionList.isEmpty || currentQuestionIndex >= questionList.length) {
+      return const SizedBox
+          .shrink(); // Return an empty widget if the questionList is not loaded or if the index is out of range
+    }
     return Column(
       children: questionList[currentQuestionIndex]
           .answerList
@@ -96,7 +150,6 @@ class _SeverityQuizState extends State<SeverityQuiz> {
       margin: const EdgeInsets.symmetric(vertical: 8),
       height: 40,
       child: ElevatedButton(
-        child: Text(answer.answerText),
         style: ElevatedButton.styleFrom(
           shape: const StadiumBorder(),
           primary: isSelected
@@ -109,137 +162,47 @@ class _SeverityQuizState extends State<SeverityQuiz> {
             selectedAnswer = answer;
           });
         },
+        child: Text(answer.answerText),
       ),
     );
   }
 
   _nextButton() {
-    bool islastQuestion = false;
-    if (currentQuestionIndex == questionList.length - 1) {
-      islastQuestion = true;
-    }
+    bool islastQuestion = currentQuestionIndex == questionList.length - 1;
 
     return Container(
       width: MediaQuery.of(context).size.width * 0.5,
       height: 40,
       child: ElevatedButton(
-          child: Text(islastQuestion ? "Show Results" : "Next"),
           style: ElevatedButton.styleFrom(
             shape: const StadiumBorder(),
             primary: Colors.green.shade400,
             onPrimary: Colors.black,
           ),
           onPressed: () {
-            if (islastQuestion) {
-              //redirect to result sheet
-              Navigator.push(context,
-                  MaterialPageRoute(builder: (context) => ResultScreen()));
+            if (selectedAnswer != null) {
+              userAnswers += selectedAnswer?.answerWeight ?? 0;
+
+              if (islastQuestion) {
+                print(userAnswers);
+                //redirect to result sheet with answers
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) =>
+                            ResultScreen(userAnswers, severity)));
+              } else {
+                //next question
+                setState(() {
+                  selectedAnswer = null;
+                  currentQuestionIndex++;
+                });
+              }
             } else {
-              //next question
-              setState(() {
-                selectedAnswer = null;
-                currentQuestionIndex++;
-              });
+              // You can show an alert or message saying "Please select an answer"
             }
-          }),
+          },
+          child: Text(islastQuestion ? "Show Results" : "Next")),
     );
   }
 }
-
-
-//try this for latest5
-// import 'package:flutter/material.dart';
-// import 'package:myalo_app/models/severity_quiz_model.dart';
-// import 'package:myalo_app/function.dart'; // Import the function.dart file
-
-// import 'severity_result.dart';
-
-// class SeverityQuiz extends StatefulWidget {
-//   @override
-//   State<SeverityQuiz> createState() => _SeverityQuizState();
-// }
-
-// class _SeverityQuizState extends State<SeverityQuiz> {
-//   List<Question> questionList = [];
-//   int currentQuestionIndex = 0;
-//   Answer? selectedAnswer;
-
-//   @override
-//   void initState() {
-//     super.initState();
-//     _fetchQuestions(); // Fetch questions when the component loads
-//   }
-
-//   Future<void> _fetchQuestions() async {
-//     try {
-//       final questionsResponse = await Functions.fetchSeverityQuestions();
-//       if (questionsResponse.containsKey('questions')) {
-//         final questions = questionsResponse['questions'];
-//         setState(() {
-//           questionList = List<Question>.from(questions.map((question) => Question.fromJson(question)));
-//         });
-//       }
-//     } catch (e) {
-//       // Handle error
-//       print('Error fetching questions: $e');
-//     }
-//   }
-
-//   // ... (Rest of your code remains the same)
-
-//   _nextButton() {
-//     bool isLastQuestion = false;
-//     if (currentQuestionIndex == questionList.length - 1) {
-//       isLastQuestion = true;
-//     }
-
-//     return Container(
-//       width: MediaQuery.of(context).size.width * 0.5,
-//       height: 40,
-//       child: ElevatedButton(
-//         child: Text(isLastQuestion ? "Show Results" : "Next"),
-//         style: ElevatedButton.styleFrom(
-//           shape: const StadiumBorder(),
-//           primary: Colors.green.shade400,
-//           onPrimary: Colors.black,
-//         ),
-//         onPressed: () {
-//           if (isLastQuestion) {
-//             // Submit answers and show results
-//             _submitAnswersAndShowResults();
-//           } else {
-//             // Next question
-//             setState(() {
-//               selectedAnswer = null;
-//               currentQuestionIndex++;
-//             });
-//           }
-//         },
-//       ),
-//     );
-//   }
-
-//   Future<void> _submitAnswersAndShowResults() async {
-//     final answers = {
-//       'answers': questionList.map((question) => {'question': question.questionText, 'answer': selectedAnswer?.answerText}).toList(),
-//     };
-
-//     try {
-//       final result = await Functions.submitSeverityAnswers(answers);
-//       // Process the result and navigate to the result screen
-//       // Example: You can extract severity level and recommendations from the result
-//       Navigator.push(
-//         context,
-//         MaterialPageRoute(
-//           builder: (context) => ResultScreen(
-//             severityLevel: result['severity'],
-//             recommendations: List<String>.from(result['recommendations']),
-//           ),
-//         ),
-//       );
-//     } catch (e) {
-//       // Handle error
-//       print('Error submitting answers and showing results: $e');
-//     }
-//   }
-// }

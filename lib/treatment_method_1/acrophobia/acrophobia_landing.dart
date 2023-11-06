@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:myalo_app/login/chatbot.dart';
 
 // import 'package:myalo_app/treatment_method_1/acrophobia/vrPlayer/vr_player.dart';
 
@@ -87,7 +88,11 @@ class AcrophobiaLanding extends StatelessWidget {
                 onPressed: () async {
                   // Navigator.push(context, MaterialPageRoute(
                   //   builder: (context) => VrPlayerPage()));
-                  await platform.invokeMethod('launchVR', {'contentPath': 'lib/images/panaroma.jpg'});
+                  //await platform.invokeMethod('launchVR', {'contentPath': 'lib/images/panaroma.jpg'});
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => ChatbotScreen()),
+                  );
                 }),
           ),
         ],

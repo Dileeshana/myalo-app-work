@@ -7,6 +7,10 @@ import 'package:flutter/material.dart';
 import 'severity_quiz.dart';
 
 class SeverityLanding extends StatelessWidget {
+  final String severity;
+
+  SeverityLanding(this.severity);
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -29,7 +33,7 @@ class SeverityLanding extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Spacer(),
-            const Text("You complete the Sickness Identification.",
+            const Text("You completed the Sickness Identification.",
                 style: TextStyle(height: 7)),
             const Text("Let`s check the severity of your ilness."),
             Spacer(flex: 1),
@@ -42,7 +46,6 @@ class SeverityLanding extends StatelessWidget {
   }
 
   _getStartedQuizButton(BuildContext context) {
-    
     return Container(
       width: 200,
       height: 40,
@@ -54,7 +57,8 @@ class SeverityLanding extends StatelessWidget {
           onPrimary: Color.fromARGB(230, 255, 255, 255),
         ),
         onPressed: () {
-          Navigator.push(context, MaterialPageRoute(builder: (context) => SeverityQuiz()));
+          Navigator.push(context,
+              MaterialPageRoute(builder: (context) => SeverityQuiz(severity)));
         },
       ),
     );

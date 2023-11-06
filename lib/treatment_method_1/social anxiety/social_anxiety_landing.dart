@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import 'package:myalo_app/login/chatbot.dart';
 import 'social_anxiety_distrotion.dart';
 
 class SocialAnxietyLanding extends StatelessWidget {
@@ -82,10 +82,14 @@ class SocialAnxietyLanding extends StatelessWidget {
                 child: Text("Get Started"),
                 style: ElevatedButton.styleFrom(shape: StadiumBorder()),
                 onPressed: () {
+                  // Navigator.push(
+                  //     context,
+                  //     MaterialPageRoute(
+                  //         builder: (context) => SocialAnxietyDistrotion()));
                   Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => SocialAnxietyDistrotion()));
+                    context,
+                    MaterialPageRoute(builder: (context) => ChatbotScreen()),
+                  );
                 }),
           ),
         ],
